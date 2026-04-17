@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Тюльпан">
+  <rect width="240" height="200" fill="#fffef5"/>
+  <path fill="#37b24d" d="M118 200 L118 130 Q120 100 118 200"/>
+  <path fill="#ffd43b" d="M120 130 L95 85 Q120 55 145 85 Z"/>
+  <path fill="#fcc419" d="M120 125 L100 88 Q120 65 140 88 Z" opacity="0.85"/>
+  <ellipse cx="120" cy="78" rx="14" ry="22" fill="#fab005"/>
+</svg>

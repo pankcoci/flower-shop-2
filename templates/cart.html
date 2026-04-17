@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Корзина</h2>
+{% if items %}
+    <div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th scope="col" class="d-none d-md-table-cell" style="width: 100px;">Фото</th>
+                <th scope="col">Товар</th>
+                <th scope="col">Цена</th>
+                <th scope="col">Количество</th>
+                <th scope="col">Сумма</th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="d-none d-md-table-cell">
+                    <img class="cart-thumb rounded" src="{{ url_for('static', filename=item.product.image) }}?v={{ asset_version(item.product.image) }}" alt="" width="72" height="72" loading="lazy">
+                </td>
+                <td class="fw-semibold">{{ item.product.name }}</td>
+                <td>{{ item.product.price }} ₽</td>
+                <td>
+                    <form method="POST" action="{{ url_for('update_cart', pid=item.product.id) }}" class="d-inline-flex align-items-center gap-1">
+                        <button type="submit" name="action" value="decrease" class="btn btn-sm btn-secondary" aria-label="Меньше">−</button>
+                        <span class="mx-2">{{ item.qty }}</span>
+                        <button type="submit" name="action" value="increase" class="btn btn-sm btn-secondary" aria-label="Больше">+</button>
+                    </form>
+                </td>
+                <td>{{ item.sum }} ₽</td>
+                <td>
+                    <form method="POST" action="{{ url_for('update_cart', pid=item.product.id) }}">
+                        <button type="submit" name="action" value="remove" class="btn btn-sm btn-danger">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" class="text-end"><strong>Итого</strong></td>
+                <td colspan="2"><strong>{{ total }} ₽</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    </div>
+    <form method="POST" action="{{ url_for('checkout') }}">
+        <button type="submit" class="btn btn-success btn-lg">Оформить заказ</button>
+    </form>
+{% else %}
+    <div class="text-center py-5">
+        <p class="lead mb-3">Корзина пуста.</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Перейти к каталогу</a>
+    </div>
+{% endif %}
+{% endblock %}

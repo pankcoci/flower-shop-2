@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Лилия">
+  <rect width="240" height="200" fill="#f8f7ff"/>
+  <path fill="#2b8a3e" d="M118 200 L118 125 Q120 95 118 200"/>
+  <ellipse cx="120" cy="118" rx="6" ry="28" fill="#2b8a3e" transform="rotate(-35 120 118)"/>
+  <ellipse cx="120" cy="118" rx="6" ry="28" fill="#2b8a3e" transform="rotate(35 120 118)"/>
+  <ellipse cx="120" cy="118" rx="6" ry="28" fill="#2b8a3e" transform="rotate(0 120 118)"/>
+  <path fill="#f8f9fa" stroke="#dee2e6" stroke-width="1" d="M120 100 Q95 75 75 95 Q95 110 120 100"/>
+  <path fill="#f8f9fa" stroke="#dee2e6" stroke-width="1" d="M120 100 Q145 75 165 95 Q145 110 120 100"/>
+  <path fill="#e9ecef" stroke="#ced4da" stroke-width="1" d="M120 100 Q120 60 120 100"/>
+  <circle cx="120" cy="95" r="10" fill="#fcc419"/>
+  <circle cx="120" cy="95" r="4" fill="#e67700"/>
+</svg>

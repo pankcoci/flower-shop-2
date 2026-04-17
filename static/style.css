@@ -1,0 +1,46 @@
+.product-card {
+    transition: transform 0.2s;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    /* Нейтральный фон: цветной фон карточки искажал ваши фото (просвечивал через PNG с альфой). */
+    background-color: #fff;
+}
+.product-card:hover {
+    transform: translateY(-5px);
+}
+.card-title {
+    font-weight: bold;
+}
+
+/* Тонкая цветная полоска сверху — акцент без заливки под картинкой */
+.product-card[data-product-id="1"] {
+    border-top: 4px solid #e03131;
+}
+.product-card[data-product-id="2"] {
+    border-top: 4px solid #f59f00;
+}
+.product-card[data-product-id="3"] {
+    border-top: 4px solid #7950f2;
+}
+
+.product-card-img {
+    height: 200px;
+    object-fit: cover;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: #fff;
+}
+
+.cart-thumb {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    background-color: #fff;
+}
+
+.cart-badge {
+    position: absolute;
+    top: 0.15rem;
+    right: 0.25rem;
+    font-size: 0.7rem;
+    min-width: 1.25rem;
+}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Наши цветы</h1>
+{% if not current_user %}
+<p class="text-muted mb-4">Войдите в аккаунт, чтобы добавлять букеты в корзину и оформлять заказ.</p>
+{% endif %}
+<div class="row">
+    {% for product in products %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 product-card" data-product-id="{{ product.id }}">
+            <img class="card-img-top product-card-img" src="{{ url_for('static', filename=product.image) }}?v={{ asset_version(product.image) }}" alt="{{ product.name }}" width="400" height="240" loading="lazy">
+            <div class="card-body text-center d-flex flex-column">
+                <h5 class="card-title">{{ product.name }}</h5>
+                <p class="card-text flex-grow-1">{{ product.desc }}</p>
+                <p class="fw-bold mb-3">{{ product.price }} ₽</p>
+                {% if current_user %}
+                <a href="{{ url_for('add_to_cart', pid=product.id) }}" class="btn btn-primary mt-auto">Добавить в корзину</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary mt-auto">Войти, чтобы купить</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
