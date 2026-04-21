@@ -3,60 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlowerShop</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>🌸 Райский сад</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fef3e8 0%, #ffe8d6 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #1a472a, #2d5a3b) !important;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+        .navbar-brand {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffd700 !important;
+        }
+        .nav-link {
+            color: white !important;
+            transition: all 0.3s;
+        }
+        .nav-link:hover {
+            color: #ffd700 !important;
+            transform: translateY(-2px);
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #a1c4fd 100%);
+            padding: 80px 0;
+            margin-bottom: 50px;
+            border-radius: 0 0 60px 60px;
+        }
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.2);
+        }
+        .product-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .product-img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+        }
+        .discount-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, #ff4757, #ff6b81);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-weight: bold;
+        }
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -12px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 11px;
+        }
+        .footer {
+            background: linear-gradient(135deg, #1a472a, #2d5a3b);
+            color: white;
+            padding: 40px 0;
+            margin-top: 50px;
+        }
+        .flash-messages {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 350px;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .alert {
+            animation: slideIn 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .hero-section h1 { font-size: 2rem; }
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">🌼 FlowerShop</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Меню">
-                <span class="navbar-toggler-icon"></span>
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-flower"></i> ❀ Райский сад
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon" style="background: white; border-radius: 5px;"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarMain">
-                <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <li class="nav-item">
-                        <a class="nav-link position-relative pe-3" href="{{ url_for('cart') }}">
-                            🛒 Корзина
-                            {% if cart_count > 0 %}
-                            <span class="badge rounded-pill bg-danger cart-badge">{{ cart_count }}</span>
-                            {% endif %}
-                        </a>
-                    </li>
-                    {% if current_user %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('account') }}">👤 {{ current_user }}</a>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">🏠 Главная</a></li>
+                    {% if session.user_id %}
+                        <li class="nav-item position-relative">
+                            <a class="nav-link" href="{{ url_for('cart') }}">🛒 Корзина
+                                {% if session.cart %}<span class="cart-badge">{{ session.cart|length }}</span>{% endif %}
+                            </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('logout') }}">🚪 Выйти</a>
-                        </li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('account') }}">👤 {{ session.username }}</a></li>
+                        {% if session.is_admin %}<li class="nav-item"><a class="nav-link" href="{{ url_for('admin_panel') }}">👑 Админ панель</a></li>{% endif %}
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">🚪 Выйти</a></li>
                     {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('login') }}">Вход</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('register') }}">Регистрация</a>
-                        </li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">🔑 Войти</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">📝 Регистрация</a></li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="flash-messages">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             {% endfor %}
         {% endwith %}
+    </div>
 
+    <div class="hero-section">
+        <div class="container text-center">
+            <h1><i class="fas fa-flower"></i> Свежие цветы для особых моментов</h1>
+            <p class="lead">Красивые букеты для любого случая. Доставка за 2 часа!</p>
+            <a href="{{ url_for('index') }}" class="btn btn-light btn-lg">Смотреть цветы</a>
+        </div>
+    </div>
+
+    <div class="container">
         {% block content %}{% endblock %}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5><i class="fas fa-flower"></i> Райский сад</h5>
+                    <p>Свежие цветы с 2010 года</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Контакты</h5>
+                    <p>📞 +7 (950) 123-45-67<br>📧 info@RaiskySad.ru</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Адрес</h5>
+                    <p>📍 г. Ижевск, ул. Цветочная, 10</p>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">© 2026 Райский сад</div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

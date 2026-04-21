@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white"><h3>✏️ Редактировать профиль</h3></div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="text-center mb-3">
+                        <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}" id="avatarPreview" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover;">
+                        <input type="file" name="avatar" id="avatar" class="form-control mt-2" accept="image/*" onchange="previewAvatar(this)">
+                    </div>
+                    <div class="mb-3"><label>Полное имя</label><input type="text" name="full_name" class="form-control" value="{{ user.full_name }}"></div>
+                    <div class="mb-3"><label>Телефон</label><input type="text" name="phone" class="form-control" value="{{ user.phone }}"></div>
+                    <div class="mb-3"><label>Адрес</label><input type="text" name="address" class="form-control" value="{{ user.address }}"></div>
+                    <div class="mb-3"><label>О себе</label><textarea name="bio" class="form-control" rows="3">{{ user.bio }}</textarea></div>
+                    <button type="submit" class="btn btn-success w-100">💾 Сохранить</button>
+                    <a href="{{ url_for('account') }}" class="btn btn-secondary w-100 mt-2">Назад</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) { document.getElementById('avatarPreview').src = e.target.result; }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

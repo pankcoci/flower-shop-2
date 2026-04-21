@@ -1,220 +1,468 @@
-from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from werkzeug.utils import secure_filename
 import os
-
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shop.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# -----------------------
-# ДАННЫЕ
-# -----------------------
-# Картинки кладите в папку static/images/ и укажите путь от static, например:
-# "image": "images/moya_roza.jpg"
-# Поле image должно совпадать с реальным именем файла на диске.
+# Настройки для загрузки файлов
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['AVATAR_FOLDER'] = 'static/avatars'
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
 
-products = [
-    {
-        "id": 1,
-        "name": "Роза",
-        "price": 250,
-        "desc": "Красная роза",
-        "color": "#ffcccc",
-        "image": "images/rose.svg",
-    },
-    {
-        "id": 2,
-        "name": "Тюльпан",
-        "price": 180,
-        "desc": "Жёлтый тюльпан",
-        "color": "#ffffcc",
-        "image": "images/tulip.svg",
-    },
-    {
-        "id": 3,
-        "name": "Лилия",
-        "price": 300,
-        "desc": "Белая лилия",
-        "color": "#e6e6fa",
-        "image": "images/lily.svg",
-    },
-]
+# Создаем папки если их нет
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
+os.makedirs('static/images', exist_ok=True)
 
-users = {
-    "admin": "admin",
-}
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
 
+# ==================== МОДЕЛИ БАЗЫ ДАННЫХ ====================
 
-# -----------------------
-# ДЕКОРАТОР ЛОГИНА
-# -----------------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    avatar = db.Column(db.String(200), default='default_avatar.png')
+    full_name = db.Column(db.String(100), default='')
+    phone = db.Column(db.String(20), default='')
+    address = db.Column(db.String(200), default='')
+    bio = db.Column(db.Text, default='')
+    orders = db.relationship('Order', backref='user', lazy=True)
 
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    image = db.Column(db.String(200), default='default.jpg')
+    stock = db.Column(db.Integer, default=0)
+    category = db.Column(db.String(50), default='flowers')
+    discount = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user" not in session:
-            flash("Сначала войдите в систему", "warning")
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    total_amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(50), default='pending')
+    address = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    items = db.relationship('OrderItem', backref='order', lazy=True)
 
-    return wrapper
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    product = db.relationship('Product', backref='order_items')
 
+# ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
-# -----------------------
-# ШАБЛОНЫ: пользователь и корзина
-# -----------------------
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+def get_discounted_price(product):
+    if product.discount and product.discount > 0:
+        return product.price * (1 - product.discount / 100)
+    return product.price
 
-def _asset_version(static_filename):
-    """Версия по времени файла — браузер заново загрузит картинку после замены."""
-    if not static_filename:
-        return "0"
-    parts = static_filename.replace("\\", "/").split("/")
-    full = os.path.join(app.root_path, "static", *parts)
-    try:
-        return str(int(os.path.getmtime(full)))
-    except OSError:
-        return "0"
+# ==================== СОЗДАНИЕ БАЗЫ ДАННЫХ ====================
 
+with app.app_context():
+    db.create_all()
+    
+    # Создаем админа если нет
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            email='admin@flowershop.ru',
+            password=bcrypt.generate_password_hash('admin123').decode('utf-8'),
+            is_admin=True,
+            full_name='Администратор',
+            phone='+7 (999) 123-45-67',
+            bio='Я создатель этого цветочного магазина'
+        )
+        db.session.add(admin)
+        print("👑 Создан администратор: admin / admin123")
+    
+    # Создаем тестового пользователя если нет
+    if not User.query.filter_by(username='user').first():
+        user = User(
+            username='user',
+            email='user@example.com',
+            password=bcrypt.generate_password_hash('user123').decode('utf-8'),
+            full_name='Иван Петров',
+            phone='+7 (999) 888-77-66',
+            bio='Люблю цветы и природу'
+        )
+        db.session.add(user)
+        print("👤 Создан тестовый пользователь: user / user123")
+    
+    # Создаем товары только если их нет
+    if Product.query.count() == 0:
+        test_products = [
+            Product(name='Красная Роза', description='Красивые красные розы - символ любви и страсти', price=299, stock=50, category='roses', discount=10),
+            Product(name='Белая Лилия', description='Элегантные белые лилии со свежим ароматом', price=349, stock=30, category='lilies', discount=0),
+            Product(name='Желтый Тюльпан', description='Яркие желтые тюльпаны, которые приносят радость', price=249, stock=45, category='tulips', discount=15),
+            Product(name='Смешанный Букет', description='Красивая смесь сезонных цветов. Отличный подарок', price=499, stock=25, category='bouquet', discount=0),
+            Product(name='Розовый Пион', description='Нежные розовые пионы с сладким ароматом', price=399, stock=20, category='flowers', discount=20),
+            Product(name='Орхидея', description='Экзотическая орхидея - символ красоты и изысканности', price=599, stock=15, category='flowers', discount=0),
+        ]
+        for product in test_products:
+            db.session.add(product)
+        print(f"📦 Добавлено {len(test_products)} тестовых товаров")
+    
+    db.session.commit()
+    
+    print("=" * 50)
+    print("✅ База данных готова!")
+    print("👑 Админ: admin / admin123")
+    print("👤 Пользователь: user / user123")
+    print("=" * 50)
 
-@app.context_processor
-def inject_globals():
-    cart = session.get("cart") or {}
-    try:
-        cart_count = sum(int(q) for q in cart.values())
-    except (TypeError, ValueError):
-        cart_count = 0
-    return dict(
-        current_user=session.get("user"),
-        cart_count=cart_count,
-        asset_version=_asset_version,
-    )
+# ==================== МАРШРУТЫ ====================
 
-
-# -----------------------
-# РОУТЫ
-# -----------------------
-
-
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html", products=products)
+    products = Product.query.all()
+    return render_template('index.html', products=products)
 
+@app.route('/product/<int:id>')
+def product_detail(id):
+    product = Product.query.get_or_404(id)
+    return render_template('product_detail.html', product=product)
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = bcrypt.generate_password_hash(request.form['password']).decode('utf-8')
+        
+        if User.query.filter_by(username=username).first():
+            flash('Имя пользователя уже существует', 'danger')
+            return redirect(url_for('register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email уже зарегистрирован', 'danger')
+            return redirect(url_for('register'))
+        
+        user = User(username=username, email=email, password=password)
+        db.session.add(user)
+        db.session.commit()
+        flash('Регистрация успешна! Теперь вы можете войти.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        
+        if user and bcrypt.check_password_hash(user.password, password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['is_admin'] = user.is_admin
+            flash(f'С возвращением, {username}!', 'success')
+            return redirect(url_for('admin_panel' if user.is_admin else 'index'))
+        else:
+            flash('Неверное имя пользователя или пароль', 'danger')
+    
+    return render_template('login.html')
 
-        if users.get(username) == password:
-            session["user"] = username
-            flash("Добро пожаловать!", "success")
-            return redirect(url_for("index"))
-        flash("Неверный логин или пароль", "danger")
-
-    return render_template("login.html")
-
-
-@app.route("/logout")
+@app.route('/logout')
 def logout():
     session.clear()
-    flash("Вы вышли из аккаунта", "info")
-    return redirect(url_for("index"))
+    flash('Вы вышли из аккаунта', 'info')
+    return redirect(url_for('index'))
 
+@app.route('/edit_profile', methods=['GET', 'POST'])
+def edit_profile():
+    if 'user_id' not in session:
+        flash('Пожалуйста, войдите в аккаунт', 'warning')
+        return redirect(url_for('login'))
+    
+    user = User.query.get(session['user_id'])
+    
+    if request.method == 'POST':
+        user.full_name = request.form.get('full_name', '')
+        user.phone = request.form.get('phone', '')
+        user.address = request.form.get('address', '')
+        user.bio = request.form.get('bio', '')
+        
+        if 'avatar' in request.files:
+            file = request.files['avatar']
+            if file and allowed_file(file.filename):
+                if user.avatar != 'default_avatar.png':
+                    old_path = os.path.join(app.config['AVATAR_FOLDER'], user.avatar)
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                filename = timestamp + filename
+                file.save(os.path.join(app.config['AVATAR_FOLDER'], filename))
+                user.avatar = filename
+        
+        db.session.commit()
+        flash('Профиль успешно обновлен!', 'success')
+        return redirect(url_for('account'))
+    
+    return render_template('edit_profile.html', user=user)
 
-@app.route("/account")
-@login_required
+@app.route('/account')
 def account():
-    return render_template("account.html")
+    if 'user_id' not in session:
+        flash('Пожалуйста, войдите в аккаунт', 'warning')
+        return redirect(url_for('login'))
+    
+    user = User.query.get(session['user_id'])
+    orders = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).all()
+    return render_template('account.html', user=user, orders=orders)
 
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
-        confirm = request.form.get("confirm") or ""
-
-        if not username or not password:
-            flash("Заполните логин и пароль", "danger")
-        elif password != confirm:
-            flash("Пароли не совпадают", "danger")
-        elif username in users:
-            flash("Такой логин уже занят", "warning")
-        else:
-            users[username] = password
-            flash("Аккаунт создан. Войдите с этими данными.", "success")
-            return redirect(url_for("login"))
-
-    return render_template("register.html")
-
-
-# -----------------------
-# КОРЗИНА
-# -----------------------
-
-
-@app.route("/add_to_cart/<int:pid>")
-@login_required
-def add_to_cart(pid):
-    cart = session.get("cart", {})
-    cart[str(pid)] = cart.get(str(pid), 0) + 1
-    session["cart"] = cart
+@app.route('/add_to_cart/<int:product_id>')
+def add_to_cart(product_id):
+    if 'user_id' not in session:
+        flash('Войдите в аккаунт, чтобы добавить товары в корзину', 'warning')
+        return redirect(url_for('login'))
+    
+    if 'cart' not in session:
+        session['cart'] = {}
+    
+    cart = session['cart']
+    cart[str(product_id)] = cart.get(str(product_id), 0) + 1
+    session['cart'] = cart
     session.modified = True
-    flash("Товар добавлен в корзину", "success")
-    return redirect(url_for("index"))
+    
+    product = Product.query.get(product_id)
+    flash(f'{product.name} добавлен в корзину!', 'success')
+    return redirect(request.referrer or url_for('index'))
 
-
-@app.route("/cart")
-@login_required
+@app.route('/cart')
 def cart():
-    raw = session.get("cart", {})
-    items = []
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    cart_items = []
     total = 0
+    
+    if 'cart' in session:
+        for product_id, quantity in session['cart'].items():
+            product = Product.query.get(int(product_id))
+            if product:
+                price = get_discounted_price(product)
+                subtotal = price * quantity
+                total += subtotal
+                cart_items.append({
+                    'product': product,
+                    'quantity': quantity,
+                    'subtotal': subtotal,
+                    'discounted_price': price
+                })
+    
+    return render_template('cart.html', cart_items=cart_items, total=total)
 
-    for pid, qty in raw.items():
-        product = next((p for p in products if p["id"] == int(pid)), None)
-        if product:
-            item_sum = product["price"] * qty
-            items.append({"product": product, "qty": qty, "sum": item_sum})
-            total += item_sum
-
-    return render_template("cart.html", items=items, total=total)
-
-
-@app.route("/update_cart/<int:pid>", methods=["POST"])
-@login_required
-def update_cart(pid):
-    action = request.form.get("action")
-    cart = session.get("cart", {})
-
-    if action == "increase":
-        cart[str(pid)] = cart.get(str(pid), 0) + 1
-    elif action == "decrease":
-        if cart.get(str(pid), 0) > 1:
-            cart[str(pid)] -= 1
-        else:
-            cart.pop(str(pid), None)
-    elif action == "remove":
-        cart.pop(str(pid), None)
-
-    session["cart"] = cart
+@app.route('/update_cart', methods=['POST'])
+def update_cart():
+    for key, value in request.form.items():
+        if key.startswith('quantity_'):
+            product_id = key.split('_')[1]
+            quantity = int(value)
+            
+            if quantity <= 0:
+                if 'cart' in session and product_id in session['cart']:
+                    del session['cart'][product_id]
+            else:
+                if 'cart' not in session:
+                    session['cart'] = {}
+                session['cart'][product_id] = quantity
+    
     session.modified = True
-    return redirect(url_for("cart"))
+    flash('Корзина обновлена!', 'success')
+    return redirect(url_for('cart'))
 
-
-@app.route("/checkout", methods=["POST"])
-@login_required
+@app.route('/checkout', methods=['POST'])
 def checkout():
-    session.pop("cart", None)
-    session.modified = True
-    flash("Заказ успешно оформлен!", "success")
-    return redirect(url_for("index"))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if 'cart' not in session or not session['cart']:
+        flash('Корзина пуста', 'warning')
+        return redirect(url_for('cart'))
+    
+    total = 0
+    order_items = []
+    
+    for product_id, quantity in session['cart'].items():
+        product = Product.query.get(int(product_id))
+        if product and product.stock >= quantity:
+            price = get_discounted_price(product)
+            subtotal = price * quantity
+            total += subtotal
+            order_items.append((product, quantity, price))
+        else:
+            flash(f'Недостаточно товара: {product.name}', 'danger')
+            return redirect(url_for('cart'))
+    
+    order = Order(
+        user_id=session['user_id'],
+        total_amount=total,
+        status='pending',
+        address=request.form.get('address', '')
+    )
+    db.session.add(order)
+    db.session.commit()
+    
+    for product, quantity, price in order_items:
+        order_item = OrderItem(
+            order_id=order.id,
+            product_id=product.id,
+            quantity=quantity,
+            price=price
+        )
+        db.session.add(order_item)
+        product.stock -= quantity
+    
+    db.session.commit()
+    session.pop('cart', None)
+    
+    flash(f'Заказ успешно оформлен! Сумма: {total:.2f} ₽', 'success')
+    return redirect(url_for('account'))
 
+# ==================== АДМИН ПАНЕЛЬ ====================
 
-if __name__ == "__main__":
-    _img_dir = os.path.join(app.root_path, "static", "images")
-    print("\n>>> Картинки товаров кладите СЮДА (проверьте путь в проводнике):\n", os.path.abspath(_img_dir), "\n")
+@app.route('/admin')
+def admin_panel():
+    if not session.get('is_admin'):
+        flash('Доступ запрещен. Только для администраторов.', 'danger')
+        return redirect(url_for('index'))
+    
+    products = Product.query.all()
+    orders = Order.query.order_by(Order.created_at.desc()).all()
+    users = User.query.all()
+    
+    return render_template('admin.html', products=products, orders=orders, users=users)
+
+@app.route('/admin/add_product', methods=['GET', 'POST'])
+def add_product():
+    if not session.get('is_admin'):
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form['description']
+        price = float(request.form['price'])
+        stock = int(request.form['stock'])
+        category = request.form.get('category', 'flowers')
+        discount = int(request.form.get('discount', 0))
+        
+        image_file = 'default.jpg'
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                filename = timestamp + filename
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                image_file = filename
+        
+        product = Product(
+            name=name,
+            description=description,
+            price=price,
+            stock=stock,
+            category=category,
+            discount=discount,
+            image=image_file
+        )
+        
+        db.session.add(product)
+        db.session.commit()
+        flash('Товар успешно добавлен!', 'success')
+        return redirect(url_for('admin_panel'))
+    
+    return render_template('add_product.html')
+
+@app.route('/admin/edit_product/<int:id>', methods=['GET', 'POST'])
+def edit_product(id):
+    if not session.get('is_admin'):
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('index'))
+    
+    product = Product.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        product.name = request.form['name']
+        product.description = request.form['description']
+        product.price = float(request.form['price'])
+        product.stock = int(request.form['stock'])
+        product.category = request.form.get('category', 'flowers')
+        product.discount = int(request.form.get('discount', 0))
+        
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and allowed_file(file.filename):
+                if product.image != 'default.jpg':
+                    old_path = os.path.join(app.config['UPLOAD_FOLDER'], product.image)
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                filename = timestamp + filename
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                product.image = filename
+        
+        db.session.commit()
+        flash('Товар успешно обновлен!', 'success')
+        return redirect(url_for('admin_panel'))
+    
+    return render_template('edit_product.html', product=product)
+
+@app.route('/admin/delete_product/<int:id>')
+def delete_product(id):
+    if not session.get('is_admin'):
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('index'))
+    
+    product = Product.query.get_or_404(id)
+    
+    if product.image != 'default.jpg':
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], product.image)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+    
+    db.session.delete(product)
+    db.session.commit()
+    flash('Товар успешно удален!', 'success')
+    return redirect(url_for('admin_panel'))
+
+@app.route('/admin/update_order_status/<int:id>', methods=['POST'])
+def update_order_status(id):
+    if not session.get('is_admin'):
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('index'))
+    
+    order = Order.query.get_or_404(id)
+    order.status = request.form['status']
+    db.session.commit()
+    flash('Статус заказа обновлен!', 'success')
+    return redirect(url_for('admin_panel'))
+
+if __name__ == '__main__':
     app.run(debug=True)

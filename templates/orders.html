@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Заказы{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>📋 Все заказы пользователей</h4>
+            </div>
+            <div class="card-body">
+                {% if orders %}
+                    {% for username, user_orders in orders.items() %}
+                        <div class="mb-4">
+                            <h5 class="text-primary">Пользователь: {{ username }}</h5>
+                            {% if user_orders %}
+                                {% for order in user_orders|reverse %}
+                                    <div class="order-item mb-3 p-3 border rounded">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>Заказ #{{ order.id }}</strong>
+                                            <span class="badge bg-success">{{ order.status }}</span>
+                                        </div>
+                                        <p class="text-muted">Дата: {{ order.date }}</p>
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Товар</th>
+                                                    <th>Кол-во</th>
+                                                    <th>Цена</th>
+                                                    <th>Сумма</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for item in order.items %}
+                                                <tr>
+                                                    <td>{{ item.product_name }}</td>
+                                                    <td>{{ item.quantity }}</td>
+                                                    <td>{{ item.price }} ₽</td>
+                                                    <td>{{ item.total }} ₽</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="3" class="text-end"><strong>Итого:</strong></td>
+                                                    <td><strong>{{ order.total }} ₽</strong></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">Нет заказов</p>
+                            {% endif %}
+                        </div>
+                        <hr>
+                    {% endfor %}
+                {% else %}
+                    <p>Нет заказов</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

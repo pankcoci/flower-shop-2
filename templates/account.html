@@ -1,5 +1,41 @@
 {% extends "base.html" %}
+
 {% block content %}
-<h2>Личный кабинет: {{ current_user }}</h2>
-<p>Здесь будет история заказов (в упрощённой версии не хранится).</p>
+<div class="row">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover;">
+                <h3 class="mt-3">{{ user.username }}</h3>
+                {% if user.full_name %}<p><i class="fas fa-user"></i> {{ user.full_name }}</p>{% endif %}
+                {% if user.phone %}<p><i class="fas fa-phone"></i> {{ user.phone }}</p>{% endif %}
+                {% if user.address %}<p><i class="fas fa-map-marker-alt"></i> {{ user.address }}</p>{% endif %}
+                {% if user.bio %}<p><i class="fas fa-info-circle"></i> {{ user.bio }}</p>{% endif %}
+                <a href="{{ url_for('edit_profile') }}" class="btn btn-warning">✏️ Редактировать</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white"><h4>📦 История заказов</h4></div>
+            <div class="card-body">
+                {% if orders %}
+                    <table class="table">
+                        <thead><tr><th>№</th><th>Дата</th><th>Сумма</th><th>Статус</th></tr></thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.created_at.strftime('%d.%m.%Y') }}</td>
+                                <td>{{ order.total_amount|int }} ₽</td>
+                                <td>{% if order.status == 'pending' %}⏳ Ожидает{% elif order.status == 'delivered' %}✅ Доставлен{% else %}🚚 В пути{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}<p>Заказов пока нет</p>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

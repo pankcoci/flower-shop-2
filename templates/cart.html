@@ -1,59 +1,51 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2 class="mb-4">Корзина</h2>
-{% if items %}
+<h1 class="mb-4">🛒 Корзина</h1>
+{% if cart_items %}
     <div class="table-responsive">
-    <table class="table align-middle">
-        <thead>
-            <tr>
-                <th scope="col" class="d-none d-md-table-cell" style="width: 100px;">Фото</th>
-                <th scope="col">Товар</th>
-                <th scope="col">Цена</th>
-                <th scope="col">Количество</th>
-                <th scope="col">Сумма</th>
-                <th scope="col"></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td class="d-none d-md-table-cell">
-                    <img class="cart-thumb rounded" src="{{ url_for('static', filename=item.product.image) }}?v={{ asset_version(item.product.image) }}" alt="" width="72" height="72" loading="lazy">
-                </td>
-                <td class="fw-semibold">{{ item.product.name }}</td>
-                <td>{{ item.product.price }} ₽</td>
-                <td>
-                    <form method="POST" action="{{ url_for('update_cart', pid=item.product.id) }}" class="d-inline-flex align-items-center gap-1">
-                        <button type="submit" name="action" value="decrease" class="btn btn-sm btn-secondary" aria-label="Меньше">−</button>
-                        <span class="mx-2">{{ item.qty }}</span>
-                        <button type="submit" name="action" value="increase" class="btn btn-sm btn-secondary" aria-label="Больше">+</button>
-                    </form>
-                </td>
-                <td>{{ item.sum }} ₽</td>
-                <td>
-                    <form method="POST" action="{{ url_for('update_cart', pid=item.product.id) }}">
-                        <button type="submit" name="action" value="remove" class="btn btn-sm btn-danger">Удалить</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="4" class="text-end"><strong>Итого</strong></td>
-                <td colspan="2"><strong>{{ total }} ₽</strong></td>
-            </tr>
-        </tfoot>
-    </table>
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for item in cart_items %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.discounted_price|int }} ₽</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('update_cart') }}" class="d-flex gap-2">
+                            <input type="number" name="quantity_{{ item.product.id }}" value="{{ item.quantity }}" min="0" class="form-control" style="width: 80px;">
+                            <button type="submit" class="btn btn-warning btn-sm">🔄</button>
+                        </form>
+                    </td>
+                    <td>{{ item.subtotal|int }} ₽</td>
+                    <td><a href="{{ url_for('add_to_cart', product_id=item.product.id) }}" class="btn btn-success btn-sm">+</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="table-success"><td colspan="3" class="text-end"><strong>Итого:</strong></td><td colspan="2"><h4>{{ total|int }} ₽</h4></td></tr>
+            </tfoot>
+        </table>
     </div>
-    <form method="POST" action="{{ url_for('checkout') }}">
-        <button type="submit" class="btn btn-success btn-lg">Оформить заказ</button>
-    </form>
+    <button class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#checkoutModal">Оформить заказ</button>
+    
+    <div class="modal fade" id="checkoutModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('checkout') }}">
+                    <div class="modal-header bg-success text-white"><h5>Оформление заказа</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <textarea name="address" class="form-control" rows="3" placeholder="Введите адрес доставки" required></textarea>
+                        <p class="mt-3">Сумма: <strong>{{ total|int }} ₽</strong></p>
+                    </div>
+                    <div class="modal-footer"><button type="submit" class="btn btn-success">Подтвердить</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
 {% else %}
-    <div class="text-center py-5">
-        <p class="lead mb-3">Корзина пуста.</p>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Перейти к каталогу</a>
-    </div>
+    <div class="alert alert-info text-center">Корзина пуста. <a href="{{ url_for('index') }}">Перейти к покупкам</a></div>
 {% endif %}
 {% endblock %}

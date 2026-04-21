@@ -1,25 +1,66 @@
 {% extends "base.html" %}
 
+{% block title %}Регистрация{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <h2>Регистрация</h2>
-        <form method="POST" action="{{ url_for('register') }}">
-            <div class="mb-3">
-                <label for="reg_username" class="form-label">Логин</label>
-                <input type="text" class="form-control" id="reg_username" name="username" required minlength="2" autocomplete="username">
+        <div class="card">
+            <div class="card-header bg-success text-white text-center">
+                <h3><i class="fas fa-user-plus"></i> Регистрация</h3>
             </div>
-            <div class="mb-3">
-                <label for="reg_password" class="form-label">Пароль</label>
-                <input type="password" class="form-control" id="reg_password" name="password" required minlength="3" autocomplete="new-password">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Имя пользователя</label>
+                        <input type="text" class="form-control" id="username" name="username" required 
+                               pattern="[A-Za-z0-9_]{3,20}" title="3-20 символов, буквы, цифры и _">
+                        <small class="text-muted">3-20 символов (буквы, цифры, подчеркивание)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                        <small class="text-muted">Мы не передаем email третьим лицам.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Пароль</label>
+                        <input type="password" class="form-control" id="password" name="password" required 
+                               minlength="6" title="Минимум 6 символов">
+                        <small class="text-muted">Минимум 6 символов</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Подтверждение пароля</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required 
+                               oninput="checkPasswordMatch(this)">
+                        <small id="passwordHelp" class="text-muted"></small>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check-circle"></i> Зарегистрироваться
+                        </button>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-sign-in-alt"></i> Уже есть аккаунт? Войти
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="mb-3">
-                <label for="reg_confirm" class="form-label">Повтор пароля</label>
-                <input type="password" class="form-control" id="reg_confirm" name="confirm" required autocomplete="new-password">
-            </div>
-            <button type="submit" class="btn btn-success">Зарегистрироваться</button>
-        </form>
-        <p class="mt-3">Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
+        </div>
     </div>
 </div>
+
+<script>
+function checkPasswordMatch(input) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = input.value;
+    const helpText = document.getElementById('passwordHelp');
+    
+    if (password !== confirmPassword) {
+        helpText.innerHTML = '<span class="text-danger">✗ Пароли не совпадают!</span>';
+        input.setCustomValidity("Пароли не совпадают");
+    } else {
+        helpText.innerHTML = '<span class="text-success">✓ Пароли совпадают!</span>';
+        input.setCustomValidity('');
+    }
+}
+</script>
 {% endblock %}
