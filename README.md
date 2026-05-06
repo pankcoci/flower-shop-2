@@ -59,7 +59,8 @@ flower-shop
 Администратор	admin	admin123
 Пользователь	user	user123
 📸 Скриншоты
-<img width="1737" height="950" alt="w" src="https://github.com/user-attachments/assets/f5024709-fe9c-4b02-ae5e-067de6aa3dfe" />
+<img width="1009" height="558" alt="image" src="https://github.com/user-attachments/assets/536e6629-4235-4cd3-95e1-9a1f6112595c" />
+
 
 👨‍💻 Автор
 Соловьева Татьяна Андреевна
