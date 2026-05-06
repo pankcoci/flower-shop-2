@@ -26,7 +26,7 @@
 | Jinja2 | Шаблонизатор |
 
 ## 📁 Структура проекта
-flower-shop/
+flower-shop
 ├── app.py # Главный файл приложения
 ├── templates/ # HTML шаблоны
 │ ├── base.html
